@@ -33,12 +33,14 @@ export class Router {
     const logger = this.logger.child({ method: 'onClaimIPFSHash' })
     const messageContent = message.content.toString()
     const item = JSON.parse(messageContent)
+    const ipfsFileHash = item.ipfsHash
 
     try {
-      await this.claimController.addEntry({ ipfsFileHash: item.ipfsHash })
+      await this.claimController.addEntry({ ipfsFileHash })
     } catch (error) {
       logger.error(
         {
+          ipfsFileHash,
           error,
         },
         'Uncaught Exception while adding item to be batched'
