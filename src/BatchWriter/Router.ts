@@ -52,8 +52,8 @@ export class Router {
     const logger = this.logger.child({ method: 'onBatchWriterCreateNextBatchRequest' })
     logger.trace('Create next batch request')
     try {
-      const ipfsDirectoryHash = await this.claimController.createNextBatch()
-      await this.messaging.publish(Exchange.BatchWriterCreateNextBatchSuccess, { ipfsDirectoryHash })
+      const { ipfsFileHashes, ipfsDirectoryHash } = await this.claimController.createNextBatch()
+      await this.messaging.publish(Exchange.BatchWriterCreateNextBatchSuccess, { ipfsFileHashes, ipfsDirectoryHash })
       logger.info({ ipfsDirectoryHash }, 'Create next batch success')
     } catch (error) {
       if (error instanceof NoMoreEntriesException) logger.trace(error.message)

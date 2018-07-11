@@ -17,7 +17,7 @@ export class ClaimController {
 
   addEntry = (entry: { ipfsFileHash: string }) => this.fileDAO.addEntry(entry)
 
-  createNextBatch = async (): Promise<string> => {
+  createNextBatch = async (): Promise<{ ipfsFileHashes: ReadonlyArray<string>; ipfsDirectoryHash: string }> => {
     const items = await this.fileDAO.findNextEntries()
 
     if (!items.length) throw new NoMoreEntriesException('No more ipfsHashes to batch')
@@ -29,7 +29,7 @@ export class ClaimController {
       ipfsFileHashes,
     })
     await this.completeHashes({ ipfsFileHashes, ipfsDirectoryHash })
-    return ipfsDirectoryHash
+    return { ipfsFileHashes, ipfsDirectoryHash }
   }
 
   completeHashes = async ({

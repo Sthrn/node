@@ -45,7 +45,7 @@ export class WorkController {
     await Promise.all(
       poetTimestamps.map(timestamp =>
         this.collection.updateOne(
-          { 'timestamp.ipfsHash': timestamp.ipfsHash },
+          { 'timestamp.ipfsDirectoryHash': timestamp.ipfsHash },
           { $set: { timestamp } },
           { upsert: true }
         )
