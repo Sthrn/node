@@ -1,6 +1,7 @@
 import { inject, injectable } from 'inversify'
 import * as Pino from 'pino'
 
+import { NoMoreEntriesException } from 'Exceptions'
 import { childWithFileName } from 'Helpers/Logging'
 import { Exchange } from 'Messaging/Messages'
 import { Messaging } from 'Messaging/Messaging'
@@ -26,10 +27,6 @@ export class Router {
   async start() {
     await this.messaging.consume(Exchange.ClaimIPFSHash, this.onClaimIPFSHash)
     await this.messaging.consume(Exchange.BatchWriterCreateNextBatchRequest, this.onBatchWriterCreateNextBatchRequest)
-    await this.messaging.consume(
-      Exchange.BlockchainWriterTimestampRequestCreated,
-      this.onBlockchainWriterTimestampRequestCreated
-    )
   }
 
   onClaimIPFSHash = async (message: any): Promise<void> => {
@@ -53,25 +50,12 @@ export class Router {
     const logger = this.logger.child({ method: 'onBatchWriterCreateNextBatchRequest' })
     logger.trace('Create next batch request')
     try {
-      const { ipfsFileHashes, ipfsDirectoryHash } = await this.claimController.createNextBatch()
-      if (ipfsFileHashes.length > 0)
-        await this.messaging.publish(Exchange.BatchWriterCreateNextBatchSuccess, { ipfsFileHashes, ipfsDirectoryHash })
-      logger.info({ ipfsFileHashes, ipfsDirectoryHash }, 'Create next batch success')
+      const ipfsDirectoryHash = await this.claimController.createNextBatch()
+      await this.messaging.publish(Exchange.BatchWriterCreateNextBatchSuccess, { ipfsDirectoryHash })
+      logger.info({ ipfsDirectoryHash }, 'Create next batch success')
     } catch (error) {
-      logger.error({ error }, 'Create next batch failure')
-    }
-  }
-
-  onBlockchainWriterTimestampRequestCreated = async (message: any): Promise<void> => {
-    const logger = this.logger.child({ method: 'onBlockchainWriterTimestampRequestCreated' })
-    const messageContent = message.content.toString()
-    const { ipfsFileHashes, ipfsDirectoryHash } = JSON.parse(messageContent)
-    logger.trace({ ipfsFileHashes, ipfsDirectoryHash }, 'Marking hashes as complete')
-    try {
-      await this.claimController.completeHashes({ ipfsFileHashes, ipfsDirectoryHash })
-      logger.info({ ipfsFileHashes, ipfsDirectoryHash }, 'Succesfully marked hashes complete')
-    } catch (error) {
-      logger.error({ error, ipfsFileHashes, ipfsDirectoryHash }, 'Failed to marke hashes complete')
+      if (error instanceof NoMoreEntriesException) logger.trace(error.message)
+      else logger.error({ error }, 'Create next batch failure')
     }
   }
 }

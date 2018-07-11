@@ -1,5 +1,7 @@
 import { inject, injectable } from 'inversify'
 
+import { NoMoreEntriesException } from 'Exceptions'
+
 import { FileDAO } from './FileDAO'
 import { IPFS } from './IPFS'
 
@@ -15,15 +17,19 @@ export class ClaimController {
 
   addEntry = (entry: { ipfsFileHash: string }) => this.fileDAO.addEntry(entry)
 
-  createNextBatch = async (): Promise<{ ipfsFileHashes: ReadonlyArray<string>; ipfsDirectoryHash: string }> => {
+  createNextBatch = async (): Promise<string> => {
     const items = await this.fileDAO.findNextEntries()
+
+    if (!items.length) throw new NoMoreEntriesException('No more ipfsHashes to batch')
+
     const ipfsFileHashes = items.map(x => x.ipfsFileHash)
     const emptyDirectoryHash = await this.ipfs.createEmptyDirectory()
     const ipfsDirectoryHash = await this.ipfs.addFilesToDirectory({
       ipfsDirectoryHash: emptyDirectoryHash,
       ipfsFileHashes,
     })
-    return { ipfsFileHashes, ipfsDirectoryHash }
+    await this.completeHashes({ ipfsFileHashes, ipfsDirectoryHash })
+    return ipfsDirectoryHash
   }
 
   completeHashes = async ({
